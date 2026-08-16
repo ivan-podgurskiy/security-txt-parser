@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Node.js ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - if: matrix.node == 24
+        run: npm run conformance:check
+      - if: matrix.node == 24
+        run: npm run typecheck
+      - if: matrix.node == 24
+        run: npm run format:check
+      - if: matrix.node == 24
+        run: npm run pack:check
+      - if: matrix.node == 24
+        name: Check compressed entrypoint sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+          esm_size="$(gzip -9 -c dist/index.js | wc -c)"
+          cjs_size="$(gzip -9 -c dist/index.cjs | wc -c)"
+          echo "ESM gzip size: ${esm_size} bytes"
+          echo "CommonJS gzip size: ${cjs_size} bytes"
+          test "${esm_size}" -lt 5000
+          test "${cjs_size}" -lt 5000

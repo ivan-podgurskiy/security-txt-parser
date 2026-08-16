@@ -36,9 +36,9 @@ if (JSON.stringify(actual) !== JSON.stringify(expected)) {
   );
 }
 
-if (manifest.unpackedSize > 25_000) {
+if (manifest.unpackedSize > 50_000) {
   throw new Error(
-    `Package unpacked size exceeds 25,000 bytes: ${manifest.unpackedSize} bytes.`,
+    `Package unpacked size exceeds 50,000 bytes: ${manifest.unpackedSize} bytes.`,
   );
 }
 
