@@ -51,6 +51,50 @@
         "hiring": ["https://example.com/jobs"],
         "policy": ["https://example.com/policy"],
         "preferredLanguages": ["en", "fr-CA"],
+        "signed": false,
+        "fields": [
+          {
+            "name": "Contact",
+            "value": "https://example.com/report",
+            "line": 1
+          },
+          { "name": "Expires", "value": "{{within_one_year}}", "line": 2 },
+          {
+            "name": "Acknowledgments",
+            "value": "https://example.com/thanks",
+            "line": 3
+          },
+          {
+            "name": "Canonical",
+            "value": "https://example.com/.well-known/security.txt",
+            "line": 4
+          },
+          {
+            "name": "CSAF",
+            "value": "https://example.com/csaf/provider-metadata.json",
+            "line": 5
+          },
+          {
+            "name": "Encryption",
+            "value": "dns:key.example.com",
+            "line": 6
+          },
+          {
+            "name": "Hiring",
+            "value": "https://example.com/jobs",
+            "line": 7
+          },
+          {
+            "name": "Policy",
+            "value": "https://example.com/policy",
+            "line": 8
+          },
+          {
+            "name": "Preferred-Languages",
+            "value": "en, fr-CA",
+            "line": 9
+          }
+        ],
         "errors": [],
         "recommendations": [{ "code": "not_signed", "line": null }],
         "notifications": []
@@ -102,6 +146,19 @@
       "input": "X-First: one\nContact: https://example.com/report\nExpires: {{within_one_year}}\nFuture-Field: two\n",
       "expected": {
         "valid": true,
+        "contact": ["https://example.com/report"],
+        "expires": "{{within_one_year}}",
+        "signed": false,
+        "fields": [
+          { "name": "X-First", "value": "one", "line": 1 },
+          {
+            "name": "Contact",
+            "value": "https://example.com/report",
+            "line": 2
+          },
+          { "name": "Expires", "value": "{{within_one_year}}", "line": 3 },
+          { "name": "Future-Field", "value": "two", "line": 4 }
+        ],
         "errors": [],
         "recommendations": [{ "code": "not_signed", "line": null }],
         "notifications": [
@@ -223,6 +280,18 @@
       "input": "Contact: mailto:security%2Btriage@example.com\nContact: tel:+1-201-555-0123\nContact: HTTPS://example.com/report\nExpires: {{within_one_year}}\nEncryption: https://example.com/key.asc\nEncryption: dns:key.example.com?type=OPENPGPKEY\nEncryption: openpgp4fpr:0123456789ABCDEF\n",
       "expected": {
         "valid": true,
+        "contact": [
+          "mailto:security%2Btriage@example.com",
+          "tel:+1-201-555-0123",
+          "HTTPS://example.com/report"
+        ],
+        "expires": "{{within_one_year}}",
+        "encryption": [
+          "https://example.com/key.asc",
+          "dns:key.example.com?type=OPENPGPKEY",
+          "openpgp4fpr:0123456789ABCDEF"
+        ],
+        "signed": false,
         "errors": [],
         "recommendations": [{ "code": "not_signed", "line": null }],
         "notifications": []
@@ -532,7 +601,21 @@
         "valid": true,
         "signed": true,
         "contact": ["https://example.com/report"],
+        "expires": "{{within_one_year}}",
         "canonical": ["https://example.com/.well-known/security.txt"],
+        "fields": [
+          {
+            "name": "Contact",
+            "value": "https://example.com/report",
+            "line": 4
+          },
+          { "name": "Expires", "value": "{{within_one_year}}", "line": 5 },
+          {
+            "name": "Canonical",
+            "value": "https://example.com/.well-known/security.txt",
+            "line": 6
+          }
+        ],
         "errors": [],
         "recommendations": [],
         "notifications": []
@@ -585,6 +668,10 @@
       "input": "Contact: mailto:security@example.com\nExpires: {{beyond_one_year}}\nCSAF: https://example.com/one.json\nCSAF: https://example.com/two.json\n",
       "expected": {
         "valid": true,
+        "csaf": [
+          "https://example.com/one.json",
+          "https://example.com/two.json"
+        ],
         "errors": [],
         "recommendations": [
           { "code": "long_expiry", "line": 2 },
@@ -616,23 +703,138 @@
     {
       "name": "RFC 9116 section 2.6 unsigned example",
       "input": "# Our security address\nContact: mailto:security@example.com\n\n# Our OpenPGP key\nEncryption: https://example.com/pgp-key.txt\n# Our security policy\nPolicy: https://example.com/security-policy.html\n\n# Our security acknowledgments page\nAcknowledgments: https://example.com/hall-of-fame.html\n\nExpires: 2021-12-31T18:37:07z\n",
+      "expiresAt": "2021-12-31T18:37:07Z",
       "expected": {
         "valid": false,
+        "contact": ["mailto:security@example.com"],
+        "expires": "2021-12-31T18:37:07z",
+        "acknowledgments": ["https://example.com/hall-of-fame.html"],
+        "encryption": ["https://example.com/pgp-key.txt"],
+        "policy": ["https://example.com/security-policy.html"],
         "signed": false,
+        "fields": [
+          {
+            "name": "Contact",
+            "value": "mailto:security@example.com",
+            "line": 2
+          },
+          {
+            "name": "Encryption",
+            "value": "https://example.com/pgp-key.txt",
+            "line": 5
+          },
+          {
+            "name": "Policy",
+            "value": "https://example.com/security-policy.html",
+            "line": 7
+          },
+          {
+            "name": "Acknowledgments",
+            "value": "https://example.com/hall-of-fame.html",
+            "line": 10
+          },
+          {
+            "name": "Expires",
+            "value": "2021-12-31T18:37:07z",
+            "line": 12
+          }
+        ],
         "errors": [{ "code": "expired", "line": 12 }],
         "recommendations": [{ "code": "not_signed", "line": null }],
         "notifications": []
+      },
+      "expiryPhases": {
+        "beyondOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [
+            { "code": "long_expiry", "line": 12 },
+            { "code": "not_signed", "line": null }
+          ],
+          "notifications": []
+        },
+        "withinOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [{ "code": "not_signed", "line": null }],
+          "notifications": []
+        },
+        "afterExpiry": {
+          "valid": false,
+          "errors": [{ "code": "expired", "line": 12 }],
+          "recommendations": [{ "code": "not_signed", "line": null }],
+          "notifications": []
+        }
       }
     },
     {
       "name": "RFC 9116 section 2.7 signed example",
       "input": "-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA256\n\n# Canonical URI\nCanonical: https://example.com/.well-known/security.txt\n\n# Our security address\nContact: mailto:security@example.com\n# Our OpenPGP key\nEncryption: https://example.com/pgp-key.txt\n\n# Our security policy\nPolicy: https://example.com/security-policy.html\n\n# Our security acknowledgments page\nAcknowledgments: https://example.com/hall-of-fame.html\n\nExpires: 2021-12-31T18:37:07z\n-----BEGIN PGP SIGNATURE-----\nVersion: GnuPG v2.2\n\nplaceholder\n-----END PGP SIGNATURE-----\n",
+      "expiresAt": "2021-12-31T18:37:07Z",
       "expected": {
         "valid": false,
         "signed": true,
+        "contact": ["mailto:security@example.com"],
+        "expires": "2021-12-31T18:37:07z",
+        "acknowledgments": ["https://example.com/hall-of-fame.html"],
+        "canonical": ["https://example.com/.well-known/security.txt"],
+        "encryption": ["https://example.com/pgp-key.txt"],
+        "policy": ["https://example.com/security-policy.html"],
+        "fields": [
+          {
+            "name": "Canonical",
+            "value": "https://example.com/.well-known/security.txt",
+            "line": 5
+          },
+          {
+            "name": "Contact",
+            "value": "mailto:security@example.com",
+            "line": 8
+          },
+          {
+            "name": "Encryption",
+            "value": "https://example.com/pgp-key.txt",
+            "line": 10
+          },
+          {
+            "name": "Policy",
+            "value": "https://example.com/security-policy.html",
+            "line": 13
+          },
+          {
+            "name": "Acknowledgments",
+            "value": "https://example.com/hall-of-fame.html",
+            "line": 16
+          },
+          {
+            "name": "Expires",
+            "value": "2021-12-31T18:37:07z",
+            "line": 18
+          }
+        ],
         "errors": [{ "code": "expired", "line": 18 }],
         "recommendations": [],
         "notifications": []
+      },
+      "expiryPhases": {
+        "beyondOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [{ "code": "long_expiry", "line": 18 }],
+          "notifications": []
+        },
+        "withinOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [],
+          "notifications": []
+        },
+        "afterExpiry": {
+          "valid": false,
+          "errors": [{ "code": "expired", "line": 18 }],
+          "recommendations": [],
+          "notifications": []
+        }
       }
     },
     {
@@ -648,9 +850,12 @@
     },
     {
       "name": "RFC erratum 7264 lowercase z remains accepted for compatibility",
-      "input": "Contact: https://example.com/report\nExpires: 2099-01-01T00:00:00z\n",
+      "input": "Contact: https://example.com/report\nExpires: {{beyond_one_year_lower_z}}\n",
       "expected": {
         "valid": true,
+        "contact": ["https://example.com/report"],
+        "expires": "{{beyond_one_year_lower_z}}",
+        "signed": false,
         "errors": [],
         "recommendations": [
           { "code": "long_expiry", "line": 2 },
@@ -666,6 +871,12 @@
       "expected": {
         "valid": true,
         "contact": ["https://g.co/vulnz", "mailto:security@google.com"],
+        "expires": "2030-04-01T00:00:00z",
+        "acknowledgments": ["https://bughunters.google.com/"],
+        "encryption": ["https://services.google.com/corporate/publickey.txt"],
+        "hiring": ["https://g.co/SecurityPrivacyEngJobs"],
+        "policy": ["https://g.co/vrp"],
+        "signed": false,
         "errors": [],
         "recommendations": [
           { "code": "long_expiry", "line": 7 },
@@ -673,12 +884,28 @@
         ],
         "notifications": []
       },
-      "expectedAfterExpiry": {
-        "valid": false,
-        "contact": ["https://g.co/vulnz", "mailto:security@google.com"],
-        "errors": [{ "code": "expired", "line": 7 }],
-        "recommendations": [{ "code": "not_signed", "line": null }],
-        "notifications": []
+      "expiryPhases": {
+        "beyondOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [
+            { "code": "long_expiry", "line": 7 },
+            { "code": "not_signed", "line": null }
+          ],
+          "notifications": []
+        },
+        "withinOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [{ "code": "not_signed", "line": null }],
+          "notifications": []
+        },
+        "afterExpiry": {
+          "valid": false,
+          "errors": [{ "code": "expired", "line": 7 }],
+          "recommendations": [{ "code": "not_signed", "line": null }],
+          "notifications": []
+        }
       }
     },
     {
@@ -688,18 +915,39 @@
       "expected": {
         "valid": true,
         "contact": ["https://hackerone.com/github"],
+        "expires": "2026-09-15T11:20:25z",
+        "acknowledgments": ["https://hackerone.com/github/hacktivity"],
+        "canonical": ["https://github.com/.well-known/security.txt"],
+        "hiring": ["https://github.careers"],
+        "policy": ["https://bounty.github.com"],
         "preferredLanguages": ["en"],
+        "signed": false,
         "errors": [],
         "recommendations": [{ "code": "not_signed", "line": null }],
         "notifications": []
       },
-      "expectedAfterExpiry": {
-        "valid": false,
-        "contact": ["https://hackerone.com/github"],
-        "preferredLanguages": ["en"],
-        "errors": [{ "code": "expired", "line": 7 }],
-        "recommendations": [{ "code": "not_signed", "line": null }],
-        "notifications": []
+      "expiryPhases": {
+        "beyondOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [
+            { "code": "long_expiry", "line": 7 },
+            { "code": "not_signed", "line": null }
+          ],
+          "notifications": []
+        },
+        "withinOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [{ "code": "not_signed", "line": null }],
+          "notifications": []
+        },
+        "afterExpiry": {
+          "valid": false,
+          "errors": [{ "code": "expired", "line": 7 }],
+          "recommendations": [{ "code": "not_signed", "line": null }],
+          "notifications": []
+        }
       }
     },
     {
@@ -709,20 +957,48 @@
       "expected": {
         "valid": true,
         "contact": ["https://msrc.microsoft.com/report/vulnerability/new"],
+        "expires": "2026-09-23T16:00:00.000Z",
+        "acknowledgments": [
+          "https://msrc.microsoft.com/update-guide/acknowledgement"
+        ],
+        "canonical": ["https://www.microsoft.com/.well-known/security.txt"],
         "csaf": ["https://msrc.microsoft.com/csaf/provider-metadata.json"],
+        "encryption": [
+          "https://msrc.microsoft.com/.well-known/csaf/openpgp/998D7EC1A516E3D17FF90480EF148D3CDE714E0D.asc"
+        ],
+        "policy": [
+          "https://www.microsoft.com/en-us/msrc/bounty/",
+          "https://www.microsoft.com/en-us/msrc/cvd",
+          "https://www.microsoft.com/en-us/msrc/bounty-safe-harbor"
+        ],
         "preferredLanguages": ["en"],
+        "signed": false,
         "errors": [],
         "recommendations": [{ "code": "not_signed", "line": null }],
         "notifications": []
       },
-      "expectedAfterExpiry": {
-        "valid": false,
-        "contact": ["https://msrc.microsoft.com/report/vulnerability/new"],
-        "csaf": ["https://msrc.microsoft.com/csaf/provider-metadata.json"],
-        "preferredLanguages": ["en"],
-        "errors": [{ "code": "expired", "line": 13 }],
-        "recommendations": [{ "code": "not_signed", "line": null }],
-        "notifications": []
+      "expiryPhases": {
+        "beyondOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [
+            { "code": "long_expiry", "line": 13 },
+            { "code": "not_signed", "line": null }
+          ],
+          "notifications": []
+        },
+        "withinOneYear": {
+          "valid": true,
+          "errors": [],
+          "recommendations": [{ "code": "not_signed", "line": null }],
+          "notifications": []
+        },
+        "afterExpiry": {
+          "valid": false,
+          "errors": [{ "code": "expired", "line": 13 }],
+          "recommendations": [{ "code": "not_signed", "line": null }],
+          "notifications": []
+        }
       }
     },
     {

@@ -42,7 +42,11 @@ interface ParseCase {
   inputFile?: string;
   expected: ExpectedResult;
   expiresAt?: string;
-  expectedAfterExpiry?: ExpectedResult;
+  expiryPhases?: {
+    beyondOneYear: ExpectedResult;
+    withinOneYear: ExpectedResult;
+    afterExpiry: ExpectedResult;
+  };
 }
 
 interface SerializeCase {
@@ -88,7 +92,65 @@ const symbols = new Map([
       ),
     ).toISOString(),
   ],
+  [
+    '{{beyond_one_year_lower_z}}',
+    new Date(
+      Date.UTC(
+        capturedNow.getUTCFullYear() + 2,
+        capturedNow.getUTCMonth(),
+        capturedNow.getUTCDate(),
+        capturedNow.getUTCHours(),
+        capturedNow.getUTCMinutes(),
+        capturedNow.getUTCSeconds(),
+        capturedNow.getUTCMilliseconds(),
+      ),
+    )
+      .toISOString()
+      .replace(/Z$/, 'z'),
+  ],
 ]);
+
+function daysInMonth(year: number, month: number): number {
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+
+  if (month === 2) {
+    return leapYear ? 29 : 28;
+  }
+
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
+function oneCalendarYearAfter(value: Date): number {
+  const year = value.getUTCFullYear() + 1;
+  const month = value.getUTCMonth() + 1;
+  const day = Math.min(value.getUTCDate(), daysInMonth(year, month));
+  const boundary = new Date(value.getTime());
+
+  boundary.setUTCFullYear(year, month - 1, day);
+  return boundary.getTime();
+}
+
+function expectedForTime(fixtureCase: ParseCase, now: Date): ExpectedResult {
+  if (fixtureCase.expiresAt && fixtureCase.expiryPhases) {
+    const expiry = new Date(fixtureCase.expiresAt).getTime();
+
+    if (now.getTime() > expiry) {
+      return {
+        ...fixtureCase.expected,
+        ...fixtureCase.expiryPhases.afterExpiry,
+      };
+    }
+
+    return {
+      ...fixtureCase.expected,
+      ...(expiry > oneCalendarYearAfter(now)
+        ? fixtureCase.expiryPhases.beyondOneYear
+        : fixtureCase.expiryPhases.withinOneYear),
+    };
+  }
+
+  return fixtureCase.expected;
+}
 
 function materialize<T>(value: T): T {
   if (typeof value === 'string') {
@@ -175,14 +237,9 @@ describe('shared conformance fixture', () => {
               'utf8',
             );
 
-      const expected =
-        fixtureCase.expiresAt &&
-        fixtureCase.expectedAfterExpiry &&
-        capturedNow.getTime() > new Date(fixtureCase.expiresAt).getTime()
-          ? fixtureCase.expectedAfterExpiry
-          : fixtureCase.expected;
-
-      expect(comparable(parse(input))).toMatchObject(materialize(expected));
+      expect(comparable(parse(input))).toMatchObject(
+        materialize(expectedForTime(fixtureCase, capturedNow)),
+      );
     });
   }
 
@@ -197,4 +254,95 @@ describe('shared conformance fixture', () => {
       }
     });
   }
+});
+
+describe('conformance fixture self-audit', () => {
+  test('fixed valid expiry cases define beyond, within, and expired phases', () => {
+    const phasedCases = [
+      'RFC 9116 section 2.6 unsigned example',
+      'RFC 9116 section 2.7 signed example',
+      'Google snapshot 2026-08-16',
+      'GitHub snapshot 2026-08-16',
+      'Microsoft snapshot 2026-08-16',
+    ];
+
+    for (const name of phasedCases) {
+      const fixtureCase = fixture.parse.find((item) => item.name === name) as
+        | (ParseCase & {
+            expiryPhases?: Record<string, ExpectedResult>;
+          })
+        | undefined;
+
+      expect(fixtureCase, name).toBeDefined();
+      expect(Object.keys(fixtureCase?.expiryPhases ?? {}), name).toEqual([
+        'beyondOneYear',
+        'withinOneYear',
+        'afterExpiry',
+      ]);
+    }
+  });
+
+  test('lowercase-z compatibility uses a symbolic long expiry', () => {
+    const fixtureCase = fixture.parse.find(
+      (item) =>
+        item.name ===
+        'RFC erratum 7264 lowercase z remains accepted for compatibility',
+    );
+
+    expect(fixtureCase?.input).toContain('{{beyond_one_year_lower_z}}');
+  });
+
+  test('calendar-aware runner selects every explicit expiry phase', () => {
+    for (const fixtureCase of fixture.parse.filter(
+      (item) => item.expiresAt && item.expiryPhases,
+    )) {
+      const expiry = new Date(fixtureCase.expiresAt as string);
+      const beyondNow = new Date(expiry);
+      beyondNow.setUTCFullYear(beyondNow.getUTCFullYear() - 2);
+      const withinNow = new Date(expiry.getTime() - 30 * 86_400_000);
+      const afterNow = new Date(expiry.getTime() + 86_400_000);
+
+      expect(expectedForTime(fixtureCase, beyondNow), fixtureCase.name).toEqual(
+        {
+          ...fixtureCase.expected,
+          ...fixtureCase.expiryPhases?.beyondOneYear,
+        },
+      );
+      expect(expectedForTime(fixtureCase, withinNow), fixtureCase.name).toEqual(
+        {
+          ...fixtureCase.expected,
+          ...fixtureCase.expiryPhases?.withinOneYear,
+        },
+      );
+      expect(expectedForTime(fixtureCase, afterNow), fixtureCase.name).toEqual({
+        ...fixtureCase.expected,
+        ...fixtureCase.expiryPhases?.afterExpiry,
+      });
+    }
+  });
+
+  test.each([
+    ['all nine registered fields populate accessors', ['fields', 'signed']],
+    [
+      'unknown extension fields remain and notify in source order',
+      ['fields', 'notifications'],
+    ],
+    ['valid URI schemes for contact and encryption', ['contact', 'encryption']],
+    [
+      'OpenPGP dash escaping is reversed before field parsing',
+      ['fields', 'signed', 'contact', 'expires', 'canonical'],
+    ],
+    ['recommendations have stable order', ['csaf']],
+    [
+      'RFC 9116 section 2.7 signed example',
+      ['fields', 'signed', 'contact', 'expires', 'canonical'],
+    ],
+  ])('%s explicitly asserts retained state', (name, expectedKeys) => {
+    const fixtureCase = fixture.parse.find((item) => item.name === name);
+
+    expect(fixtureCase, name).toBeDefined();
+    for (const key of expectedKeys) {
+      expect(fixtureCase?.expected, `${name}: ${key}`).toHaveProperty(key);
+    }
+  });
 });
