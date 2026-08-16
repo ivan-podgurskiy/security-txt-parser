@@ -24,8 +24,12 @@ npm install security-txt-parser
 ```ts
 import { parse } from 'security-txt-parser';
 
+const expires = new Date();
+expires.setUTCFullYear(expires.getUTCFullYear() + 2);
+const expiresAt = expires.toISOString().replace('.000Z', 'Z');
+
 const result = parse(`Contact: https://example.com/report
-Expires: 2099-01-01T00:00:00Z
+Expires: ${expiresAt}
 Policy: https://example.com/security-policy
 Preferred-Languages: en, tr
 `);
@@ -47,10 +51,14 @@ Validation is part of parsing. Errors make `valid` false; recommendations and no
 ```ts
 import { serialize } from 'security-txt-parser';
 
+const expires = new Date();
+expires.setUTCFullYear(expires.getUTCFullYear() + 2);
+const expiresAt = expires.toISOString().replace('.000Z', 'Z');
+
 const content = serialize({
   comments: ['Security contact for example.com'],
   contact: ['mailto:security@example.com', 'https://example.com/report'],
-  expires: '2099-01-01T00:00:00Z',
+  expires: expiresAt,
   canonical: 'https://example.com/.well-known/security.txt',
   csaf: 'https://example.com/.well-known/csaf/provider-metadata.json',
   encryption: 'openpgp4fpr:0123456789ABCDEF',
@@ -58,15 +66,17 @@ const content = serialize({
   preferredLanguages: ['en', 'tr'],
 });
 
-// # Security contact for example.com
-// Contact: mailto:security@example.com
-// Contact: https://example.com/report
-// Expires: 2099-01-01T00:00:00Z
-// Canonical: https://example.com/.well-known/security.txt
-// CSAF: https://example.com/.well-known/csaf/provider-metadata.json
-// Encryption: openpgp4fpr:0123456789ABCDEF
-// Policy: https://example.com/security-policy
-// Preferred-Languages: en, tr
+content ===
+  `# Security contact for example.com
+Contact: mailto:security@example.com
+Contact: https://example.com/report
+Expires: ${expiresAt}
+Canonical: https://example.com/.well-known/security.txt
+CSAF: https://example.com/.well-known/csaf/provider-metadata.json
+Encryption: openpgp4fpr:0123456789ABCDEF
+Policy: https://example.com/security-policy
+Preferred-Languages: en, tr
+`; // true
 ```
 
 Invalid serialization options throw `TypeError`; malformed parsed input is instead returned with structured diagnostics.
