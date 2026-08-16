@@ -29,7 +29,7 @@ export interface CollectedFields {
 export function parseField(
   line: PhysicalLine,
 ): SecurityTxtField | SecurityTxtDiagnostic | null {
-  if (line.text === '' || line.text.startsWith('#')) {
+  if (/^[ \t]*$/.test(line.text) || line.text.startsWith('#')) {
     return null;
   }
 

@@ -9,6 +9,17 @@ describe('parseField', () => {
     expect(parseField({ number: 2, text: '' })).toBeNull();
   });
 
+  test('ignores whitespace-only lines without changing later line numbers', () => {
+    expect(parseField({ number: 7, text: ' \t  ' })).toBeNull();
+    expect(
+      parseField({ number: 8, text: 'Contact: https://example.com/report' }),
+    ).toEqual({
+      name: 'Contact',
+      value: 'https://example.com/report',
+      line: 8,
+    });
+  });
+
   test('treats a leading-space comment as an invalid line', () => {
     expect(parseField({ number: 4, text: ' # not a comment' })).toMatchObject({
       code: 'invalid_line',

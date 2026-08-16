@@ -44,6 +44,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean --minify",
+    "conformance:check": "node scripts/check-conformance-hash.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "pack:check": "npm run build && node scripts/check-package.mjs",
