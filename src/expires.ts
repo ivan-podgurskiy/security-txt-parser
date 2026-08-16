@@ -48,16 +48,18 @@ export function parseRfc3339(value: string): Date | null {
     day > daysInMonth(year, month) ||
     hour > 23 ||
     minute > 59 ||
-    second > 59 ||
+    second > 60 ||
     offsetHour > 23 ||
     offsetMinute > 59
   ) {
     return null;
   }
 
+  const leapSecond = second === 60;
+  const constructedSecond = leapSecond ? 59 : second;
   const local = new Date(0);
   local.setUTCFullYear(year, month - 1, day);
-  local.setUTCHours(hour, minute, second, millisecond);
+  local.setUTCHours(hour, minute, constructedSecond, millisecond);
 
   if (
     local.getUTCFullYear() !== year ||
@@ -65,7 +67,7 @@ export function parseRfc3339(value: string): Date | null {
     local.getUTCDate() !== day ||
     local.getUTCHours() !== hour ||
     local.getUTCMinutes() !== minute ||
-    local.getUTCSeconds() !== second ||
+    local.getUTCSeconds() !== constructedSecond ||
     local.getUTCMilliseconds() !== millisecond
   ) {
     return null;
@@ -76,7 +78,24 @@ export function parseRfc3339(value: string): Date | null {
     offsetSign * (offsetHour * 60 + offsetMinute) * 60_000;
   const instant = new Date(local.getTime() - offsetMilliseconds);
 
-  return Number.isNaN(instant.getTime()) ? null : instant;
+  if (Number.isNaN(instant.getTime())) {
+    return null;
+  }
+
+  if (!leapSecond) {
+    return instant;
+  }
+
+  const possiblePositiveLeapSecond =
+    instant.getUTCHours() === 23 &&
+    instant.getUTCMinutes() === 59 &&
+    instant.getUTCSeconds() === 59 &&
+    ((instant.getUTCMonth() === 5 && instant.getUTCDate() === 30) ||
+      (instant.getUTCMonth() === 11 && instant.getUTCDate() === 31));
+
+  return possiblePositiveLeapSecond
+    ? new Date(instant.getTime() + 1_000)
+    : null;
 }
 
 export function classifyExpiry(value: string, now: Date): ExpiryClassification {

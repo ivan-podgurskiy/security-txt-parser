@@ -10,6 +10,8 @@ describe('parseRfc3339', () => {
     ['2028-02-29T10:04:56-02:30', '2028-02-29T12:34:56.000Z'],
     ['2028-02-29T12:34:56.123456789Z', '2028-02-29T12:34:56.123Z'],
     ['0000-01-01T00:00:00Z', '0000-01-01T00:00:00.000Z'],
+    ['1990-12-31T23:59:60Z', '1991-01-01T00:00:00.000Z'],
+    ['1991-01-01T00:59:60+01:00', '1991-01-01T00:00:00.000Z'],
   ])('parses valid RFC 3339 value %s', (value, expected) => {
     expect(parseRfc3339(value)?.toISOString()).toBe(expected);
   });
@@ -21,7 +23,6 @@ describe('parseRfc3339', () => {
     '2028-13-01T12:00:00Z',
     '2028-01-01T24:00:00Z',
     '2028-01-01T12:60:00Z',
-    '2028-01-01T12:00:60Z',
     '2028-01-01T12:00:00+24:00',
     '2028-01-01T12:00:00+00:60',
     '2028-01-01T12:00:00Z trailing',
@@ -31,6 +32,17 @@ describe('parseRfc3339', () => {
   ])('rejects malformed or impossible value %s', (value) => {
     expect(parseRfc3339(value)).toBeNull();
   });
+
+  test.each([
+    '2028-01-01T12:00:60Z',
+    '2028-06-30T23:58:60Z',
+    '2028-07-01T01:59:60+01:00',
+  ])(
+    'rejects second 60 outside a possible positive leap second %s',
+    (value) => {
+      expect(parseRfc3339(value)).toBeNull();
+    },
+  );
 });
 
 describe('classifyExpiry', () => {
