@@ -49,6 +49,35 @@ describe('validateFieldUri', () => {
   );
 
   test.each([
+    ['Contact', 'mailto:a\\b@example.com'],
+    ['Contact', 'mailto:a<b@example.com'],
+    ['Policy', 'ftp://example.com\\policy'],
+  ] as const)(
+    'rejects RFC-forbidden raw characters in %s value %s before scheme checks',
+    (name, value) => {
+      expect(validateFieldUri(name, value, 10)).toMatchObject({
+        code: 'invalid_uri',
+        line: 10,
+      });
+    },
+  );
+
+  test.each([
+    ['Contact', 'mailto:#fragment'],
+    ['Contact', 'tel:#fragment'],
+    ['Encryption', 'dns:#fragment'],
+    ['Encryption', 'openpgp4fpr:#fragment'],
+  ] as const)(
+    'rejects fragment-only scheme-specific content in %s value %s',
+    (name, value) => {
+      expect(validateFieldUri(name, value, 11)).toMatchObject({
+        code: 'invalid_uri',
+        line: 11,
+      });
+    },
+  );
+
+  test.each([
     ['Contact', 'http://example.com', 'invalid_contact_scheme'],
     ['Contact', 'ftp://example.com/report', 'invalid_contact_scheme'],
     ['Acknowledgments', 'http://example.com/thanks', 'invalid_https_field'],
