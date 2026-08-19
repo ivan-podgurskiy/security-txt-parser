@@ -28,8 +28,8 @@ updates:
     # Groups only batch minor/patch; ungrouped majors still open as separate PRs.
     # TypeScript 7 breaks tsup --dts; Vitest 4 needs Node 20+ (we support 18).
     ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       npm-minor-patch:
         patterns:
